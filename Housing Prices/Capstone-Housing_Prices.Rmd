@@ -1,0 +1,1012 @@
+---
+title: "Capstone Project - Housing Prices"
+author: "Renz Asprec"
+date: "7/12/2021"
+output: 
+  pdf_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+\newpage
+
+# Executive Summary
+This project aims to predict the house prices in residential houses in Ames, Iowa, given several house features. The data set used was obtained from a competition on the prediction of house prices in Kaggle.com.
+
+Through exploratory data analysis, certain features were dropped based on the percentages of NAs and single weight values. Feature engineering was also performed to reduce the number of similar features.
+
+There were two models explored in this project. The first model is a linear regression model. The second model is based on the random forest algorithm, specifically from the `Rborist` package in R. For both models, initial modeling were performed to identify the 15 most important features. These features where then used to train the final models.
+
+The model which produced the better RMSE is the random forest model, with an RMSE of $29167 as compared to the $42371 RMSE of the linear regression model. The random forest model was able to produce an RMSE close to its training RMSE compared to the linear regression model.
+
+\newpage
+
+# Introduction
+Ask a home buyer to describe their dream house, and they probably won't begin with the height of the basement ceiling or the proximity to an east-west railroad. This dataset is used to prove that there are much more influences to price negotiations than the number of bedrooms or a white-picket fence. 
+
+This data set contains 79 exploratory features describing every aspect of residential homes in Ames, Iowa. The description of each feature is shown below.
+
+*   MSSubClass : Identifies the type of dwelling involved in the sale 
+*   MSZoning : Identifies the general zoning classification of the sale.
+*   LotFrontage : Linear feet of street connected to property
+*   LotArea: Lot size in square feet
+*   Street: Type of road access to property
+*   Alley: Type of alley access to property
+*   LotShape: General shape of property
+*   LandContour: Flatness of the property
+*   Utilities: Type of utilities available
+*   LotConfig: Lot configuration
+*   LandSlope: Slope of property
+*   Neighborhood: Physical locations within Ames city limits
+*   Condition1: Proximity to various conditions
+*   Condition2: Proximity to various conditions (if more than one is present)
+*   BldgType: Type of dwelling
+*   HouseStyle: Style of dwelling
+*   OverallQual: Rates the overall material and finish of the house
+*   OverallCond: Rates the overall condition of the house
+*   YearBuilt: Original construction date
+*   YearRemodAdd: Remodel date (same as construction date if no remodeling or additions)
+*   RoofStyle: Type of roof
+*   RoofMatl: Roof material
+*   Exterior1st: Exterior covering on house
+*   Exterior2nd: Exterior covering on house (if more than one material)
+*   MasVnrType: Masonry veneer type
+*   MasVnrArea: Masonry veneer area in square feet
+*   ExterQual: Evaluates the quality of the material on the exterior 
+*   ExterCond: Evaluates the present condition of the material on the exterior
+*   Foundation: Type of foundation
+*   BsmtQual: Evaluates the height of the basement
+*   BsmtCond: Evaluates the general condition of the basement
+*   BsmtExposure: Refers to walkout or garden level walls
+*   BsmtFinType1: Rating of basement finished area
+*   BsmtFinSF1: Type 1 finished square feet
+*   BsmtFinType2: Rating of basement finished area (if multiple types)
+*   BsmtFinSF2: Type 2 finished square feet
+*   BsmtUnfSF: Unfinished square feet of basement area
+*   TotalBsmtSF: Total square feet of basement area
+*   Heating: Type of heating
+*   HeatingQC: Heating quality and condition
+*   CentralAir: Central air conditioning
+*   Electrical: Electrical system
+*   1stFlrSF: First Floor square feet
+*   2ndFlrSF: Second floor square feet
+*   LowQualFinSF: Low quality finished square feet (all floors)
+*   GrLivArea: Above grade (ground) living area square feet
+*   BsmtFullBath: Basement full bathrooms
+*   BsmtHalfBath: Basement half bathrooms
+*   FullBath: Full bathrooms above grade
+*   HalfBath: Half baths above grade
+*   Bedroom: Bedrooms above grade (does NOT include basement bedrooms)
+*   Kitchen: Kitchens above grade
+*   KitchenQual: Kitchen quality
+*   TotRmsAbvGrd: Total rooms above grade (does not include bathrooms)
+*   Functional: Home functionality (Assume typical unless deductions are warranted)
+*   Fireplaces: Number of fireplaces
+*   FireplaceQu: Fireplace quality
+*   GarageType: Garage location
+*   GarageYrBlt: Year garage was built
+*   GarageFinish: Interior finish of the garage
+*   GarageCars: Size of garage in car capacity
+*   GarageArea: Size of garage in square feet
+*   GarageQual: Garage quality
+*   GarageCond: Garage condition
+*   PavedDrive: Paved driveway
+*   WoodDeckSF: Wood deck area in square feet
+*   OpenPorchSF: Open porch area in square feet
+*   EnclosedPorch: Enclosed porch area in square feet
+*   3SsnPorch: Three season porch area in square feet
+*   ScreenPorch: Screen porch area in square feet
+*   PoolArea: Pool area in square feet
+*   PoolQC: Pool quality
+*   Fence: Fence quality
+*   MiscFeature: Miscellaneous feature not covered in other categories
+*   MiscVal: $Value of miscellaneous feature
+*   MoSold: Month Sold (MM)
+*   YrSold: Year Sold (YYYY)
+*   SaleType: Type of sale
+*   SaleCondition: Condition of sale
+
+
+\newpage
+
+# Methodology
+## Exploratory Data Analysis
+
+```{r, echo=FALSE,message=FALSE,warning=FALSE}
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(readr)) install.packages("readr", repos = "http://cran.us.r-project.org")
+if(!require(knitr)) install.packages("knitr", repos = "http://cran.us.r-project.org")
+if(!require(Rborist)) install.packages("knitr", repos = "http://cran.us.r-project.org")
+
+#load required libraries
+library(tidyverse)
+library(caret)
+library(readr)
+library(knitr)
+library(Rborist)
+
+# set options
+options(digits=5)
+
+url<- "https://raw.githubusercontent.com/renzasprec/House-Prices/main/train.csv"
+dat<- read_csv(url)
+```
+
+We'll start with exploring our data. We can see the structure of our data below:
+
+```{r, echo=FALSE}
+str(dat, give.attr=FALSE)
+```
+We can see the corresponding class of each feature. We can see that there are features of variable type `character` that we know should be `factors` based on the information we know regarding our data set. Similarly, there are also features that are `numeric` that should be `factors`. We transform them to their correct variable type. Consequently, we partition our data to train and test sets.
+
+```{r, echo=FALSE, warning=FALSE}
+# split into a training and testing set
+set.seed(1, sample.kind = "Rounding")
+test_ind<- createDataPartition(dat$SalePrice, times=1, p=0.1, list=FALSE)
+test_set<- dat %>% slice(test_ind)
+train_set<- dat %>% slice(-test_ind)
+
+# match class of feature based on information on data
+num_to_factor<- c("MSSubClass","OverallQual","OverallCond")
+train_set[num_to_factor]<- lapply(train_set[num_to_factor], FUN = factor)
+
+# convert characters to factors
+char_to_factor<-lapply(train_set,class)
+char_to_factor_list<- names(char_to_factor[which(char_to_factor=="character")])
+
+train_set[char_to_factor_list]<- lapply(train_set[char_to_factor_list], FUN = factor)
+
+# convert dates to num
+date_to_num<- c("YearBuilt","GarageYrBlt","YearRemodAdd","MoSold","YrSold")
+train_set[date_to_num]<- apply(train_set[date_to_num],
+                               MARGIN = 2,
+                               FUN = as.numeric)
+```
+Let's see how many observations we have as our training data, and how many features are present.
+```{r, echo=FALSE}
+# dimensions of train set
+init_dim<- dim(train_set)
+init_dim
+```
+As shown above, there are `r init_dim[1]` observations and `r init_dim[2]-2` features (excluding `Id` and the outcome `SalePrice`).
+
+### Checking data for NAs
+We will first check our data for missing values. The table below shows the features with NAs with their corresponding total number and proportion of NAs.
+
+```{r, echo=FALSE}
+# check data for NAs
+nas<- apply(X = train_set, MARGIN = 2, FUN = function(x){sum(is.na(x))})
+n_rows<- nrow(train_set)
+nas<- rownames_to_column(data.frame(total_na = nas),var = "feature") %>% 
+  mutate(prop_na = total_na/n_rows) %>% 
+  arrange(desc(prop_na))
+
+# output table of NAs
+nas %>% filter(prop_na>0) %>% kable()
+```
+
+We see that there are features which mostly contain NAs. We'll drop the features which contain more than 80% of NAs as these features won't be useful to us. Shown below are those features:
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# drop features with proportion of NAs greater than 0.80
+drop_cols_na<- with(nas, feature[prop_na>=0.80])
+train_set<- train_set %>% select(-drop_cols_na)
+drop_cols_na
+```
+We'll also drop features related to them such as `PoolArea` and `MiscVal`.
+```{r, echo=FALSE, warning=FALSE,message=FALSE}
+# drop related features
+train_set<- train_set %>% select(-c("PoolArea","MiscVal"))
+```
+
+### Investigate maximum single weight values for each feature
+Here, we'll investigate the maximum single weight values for each feature. Based on the results, we'll drop features which have single value weight of more than 0.80. The table below shows each feature and their corresponding single value weight.
+
+```{r, echo=FALSE}
+# check maximum weight of a single value
+single_val_wt_dat<- data.frame(single_val_wt= apply(train_set, MARGIN = 2, FUN = function(x){
+  tab<- table(x, useNA = "ifany")
+  sort(tab, decreasing = TRUE)[1]/n_rows
+})) %>%
+  arrange(desc(single_val_wt)) %>%
+  rownames_to_column(var = "feature")
+
+single_val_wt_dat %>% kable()
+
+# remove features with single value weight more than 0.8 as these features won't be helpful
+drop_cols_swt<- with(single_val_wt_dat, feature[single_val_wt>0.8])
+```
+
+Below are the features that we will drop.
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+drop_cols_swt %>% kable()
+
+train_set<- train_set %>% select(-drop_cols_swt)
+```
+
+### Filling NA values
+We've already dropped features based on the single weight values. However, we still have not dealt with the NAs in our data. The features below are the features which still contain NAs.
+```{r,echo=FALSE}
+# define indexes for NAs
+ind_na<- apply(X = train_set,MARGIN = 2,FUN = function(x){
+  any(is.na(x))
+})
+
+# features with NAs
+na_cols<- data.frame(feature= names(train_set[,ind_na]))
+na_cols %>% kable()
+```
+Based on the information on our data, we'll replace NAs with `0` (for numerical features where NAs mean 0 value), `none` (for features where NAs mean no presence of such feature), and with the median of the variables (for factor features were there are no inputted data)
+
+List of numerical features where NAs mean 0 value:
+```{r, echo=FALSE}
+# select features where NAs mean 0 (numerical)
+num_feat_0<- c("LotFrontage","MasVnrArea", "LotArea","BsmtFinSF1","BsmtUnfSF","TotalBsmtSF","1stFlrSF","2ndFlrSF","GrLivArea","BsmtFullBath","FullBath","HalfBath","BedroomAbvGr","TotRmsAbvGrd","Fireplaces","GarageCars","GarageArea","WoodDeckSF","OpenPorchSF")
+
+data.frame(feature = num_feat_0) %>% kable()
+
+# replace NAs which corresponds to 0
+train_set[,num_feat_0]<- apply(train_set[,num_feat_0], MARGIN = 2, FUN = function(x){
+  replace(x, is.na(x), 0)
+})
+```
+
+List of features where NAs mean no presence of such feature:
+```{r, echo=FALSE}
+# select features where NAs mean none (characters)
+char_feat_none<- c("MasVnrType","BsmtQual","BsmtExposure","BsmtFinType1","FireplaceQu","GarageType","GarageFinish")
+
+data.frame(feature = char_feat_none) %>% kable()
+
+# replace NAs which corresponds to none
+train_set[,char_feat_none]<- apply(train_set[,char_feat_none], MARGIN = 2,FUN = function(x){
+  replace(x, is.na(x),"none")
+})
+```
+
+List of factor features were there are no inputted data:
+```{r, echo=FALSE}
+# select features where NAs mean that there are no inputted data
+char_feat_mode<- c("MSSubClass","MSZoning","LotShape","LotConfig","Neighborhood","HouseStyle","OverallQual","OverallCond","YearBuilt","YearRemodAdd","RoofStyle","Exterior1st","Exterior2nd","ExterQual","Foundation","HeatingQC","KitchenQual")
+
+data.frame(feature = char_feat_mode) %>% kable()
+
+# replace NAs for factor with the most common value
+train_set[,char_feat_mode]<- apply(train_set[,char_feat_mode], MARGIN = 2,FUN = function(x){
+  replace(x, is.na(x), names(which.max(table(x))))
+})
+```
+
+There are still other features with NAs such as `GarageYrBlt`. Here, we'll assume that it is the same as the year the house was built, `YearBuilt`.
+```{r, echo=FALSE}
+# other NAs
+train_set<- train_set %>% mutate(GarageYrBlt = ifelse(is.na(GarageYrBlt),YearBuilt,GarageYrBlt))
+```
+
+### Investigation of outcome
+Now, we'll investigate our outcome, which is `SalePrice`. Below shows the distribution of the sale price.
+```{r, echo=FALSE, fig.align='center',fig.width=6, fig.height=6}
+# distribution of sale price
+train_set %>%
+  ggplot(aes(SalePrice)) +
+  geom_histogram(bins=30,color="black")
+```
+We can see that the distribution is skewed to the right. To fix this, we'll perform a log transformation of the `SalePrice`. The distribution of the log transformed `SalePrice` is shown below:
+
+```{r,echo=FALSE, fig.align='center',fig.width=6, fig.height=6}
+train_set %>%
+  ggplot(aes(SalePrice)) +
+  geom_histogram(bins=30, color="black")+
+  scale_x_log10()
+```
+
+Now, we can see that it is normally distributed. We will use the log transformed values of `SalePrice` in our model.
+
+```{r, echo=FALSE}
+# transform sale price to log10
+train_set<- train_set %>%
+  mutate(SalePrice = log10(SalePrice))
+
+```
+
+## Feature Engineering
+Further inspection of our data shows that there are similar features. Based on our information on the data, `GrLivArea`, `1stFlrSF`, and `2ndFlrSF` seem to be related. Let's investigate if we'll find a relation between them. The plot of the sum of each of those features is shown below:
+
+```{r, echo=FALSE, fig.align="center", fig.width=6, fig.height=6}
+# plot GrLivArea, 1stFlrSF, and 2ndFlrSF
+train_set %>% 
+  select(GrLivArea,`1stFlrSF`,`2ndFlrSF`) %>% 
+  apply(X = .,MARGIN = 2,FUN=sum) %>%
+  as.data.frame() %>% rownames_to_column(var="feature") %>%
+  rename(value=".") %>%
+  ggplot(aes(feature,value, fill=feature)) +
+  geom_col()
+```
+
+We can see that `GrLivArea` is just similar to the sum of `1stFlrSF` and `2ndFlrSF`. So we'll just keep `GrLivArea` and drop the other 2 features.
+
+```{r, echo=FALSE}
+# drop 1stFlrSF and 2ndFlrSF
+train_set<- train_set %>% select(-c(`1stFlrSF`,`2ndFlrSF`))
+```
+
+Going back to our data, we know that the number of garage cars that can fit inside the garage is just proportional to its area. Thus, we only need to select 1 feature between `GarageCars` and `GarageArea`. Here, we'll drop `GarageCars` and use `GarageArea`.
+
+```{r, echo=FALSE}
+# drop GarageCars since it is just similar to GarageArea
+train_set<- train_set %>% select(-GarageCars)
+```
+
+Prior to proceeding with training our data, let's drop the column for `Id` since it won't be used for training.
+```{r, echo=FALSE}
+# remove Id 
+train_set<- train_set %>% select(-Id)
+```
+
+```{r, echo=FALSE}
+final_dim<- dim(train_set)
+```
+The number of features we will be using are now reduced from the initial number of `r init_dim[2]-2` down to `r final_dim[2]`.
+
+## Model and Evaluation Metrics
+
+For this project, we would be exploring two models, a linear model, and a random forest model, specifically the `Rborist` package in R. For the random forest model we'll perform bagging, sampling 0.90 of the training data, for 20 iterations. In relation, we will evaluate our predicted results using the root mean squared error (RMSE) loss function. 
+
+```{r, echo=FALSE}
+# RMSE function
+RMSE<- function(SalePrice_predicted, SalePrice_true){
+  sqrt(mean((SalePrice_predicted-SalePrice_true)^2))
+}
+```
+
+\newpage
+
+# Results
+```{r, echo=FALSE}
+# match class of feature based on information on data
+num_to_factor<- c("MSSubClass","OverallQual","OverallCond")
+train_set[num_to_factor]<- lapply(train_set[num_to_factor], FUN = factor)
+
+# convert characters to factors
+char_to_factor<-lapply(train_set,class)
+char_to_factor_list<- names(char_to_factor[which(char_to_factor=="character")])
+
+train_set[char_to_factor_list]<- lapply(train_set[char_to_factor_list], FUN = factor)
+
+# convert dates to num
+date_to_num<- c("YearBuilt","GarageYrBlt","YearRemodAdd","MoSold","YrSold")
+train_set[date_to_num]<- apply(train_set[date_to_num],
+                               MARGIN = 2,
+                               FUN = as.numeric)
+```
+## Linear Regression Model
+First, we'll fit our data using a linear regression model.
+
+```{r, echo=FALSE}
+# train model - lm
+train_set_lm<- train_set
+
+fit_lm<- lm(SalePrice~., data = train_set_lm)
+
+rmse_train_lm<- RMSE(10^fit_lm$fitted.values, 10^train_set_lm$SalePrice)
+```
+The resulting RMSE for the train set is `r paste0("$",round(rmse_train_lm))`.
+
+Now, let's investigate the most important features based on the linear regression model. The importance of the features are shown below:
+
+```{r, echo=FALSE}
+# obtain 15 most important features
+varImp(fit_lm) %>% arrange(desc(Overall)) %>% slice_head(n=35) %>% kable()
+
+imp_lm<- c("GrLivArea","MSZoning","OverallQual","GarageArea","FullBath","BsmtFinType1","HalfBath","BsmtExposure","MSSubClass","Neighborhood","BsmtFullBath","LotArea","KitchenQual","YearRemodAdd","GarageType")
+```
+
+Now, we'll redefine our data and use only the 15 most important features. Then, we'll create a model using the redefined data. 
+
+```{r, echo=FALSE, message= FALSE, warning=FALSE}
+# redefine train_set with only the 15 most important features
+train_set_lm<- train_set %>% select(imp_lm,SalePrice)
+
+# new training set dimensions
+final_dim_lm<- dim(train_set_lm)
+
+# new model based on redefined data
+fit_lm<- lm(SalePrice~., data = train_set_lm)
+
+# rmse of the redefined training data
+rmse_train_imp_lm<- RMSE(10^fit_lm$fitted.values,10^train_set_lm$SalePrice)
+```
+
+The RMSE of the redefined training data is `r paste0("$",round(rmse_train_imp_lm))`.
+
+Prior to predicting the sale price of the test set, we need to perform data cleaning and feature engineering similar to the one we did with the train set.
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# perform data cleaning and feature engineering for the test set
+
+# drop features with proportion of NAs greater than 0.80 (based on train_set data)
+test_set<- test_set %>% select(-drop_cols_na)
+
+# drop related features
+test_set<- test_set %>% select(-c("PoolArea","MiscVal"))
+
+# remove features with single value weight more than 0.8 as removed from the train_set
+test_set<- test_set %>% select(-drop_cols_swt)
+
+# Filling NA values
+
+# define values for NAs
+ind_na<- apply(X = test_set,MARGIN = 2,FUN = function(x){
+  any(is.na(x))
+})
+
+# features with NAs
+na_cols<- names(test_set[,ind_na])
+
+# replace NAs which corresponds to 0
+test_set[,num_feat_0]<- apply(test_set[,num_feat_0], MARGIN = 2, FUN = function(x){
+  replace(x, is.na(x), 0)
+})
+
+# replace NAs which corresponds to none
+test_set[,char_feat_none]<- apply(test_set[,char_feat_none], MARGIN = 2,FUN = function(x){
+  replace(x, is.na(x),"none")
+})
+
+# replace NAs for factors with the most common value
+test_set[,char_feat_mode]<- apply(test_set[,char_feat_mode], MARGIN = 2,FUN = function(x){
+  replace(x, is.na(x), names(which.max(table(x))))
+})
+
+# other NAs
+test_set<- test_set %>% mutate(GarageYrBlt = ifelse(is.na(GarageYrBlt),YearBuilt,GarageYrBlt))
+
+# drop 1stFlrSF and 2ndFlrSF
+test_set<- test_set %>% select(-c(`1stFlrSF`,`2ndFlrSF`))
+
+# drop GarageCars since it is just similar to GarageArea
+test_set<- test_set %>% select(-GarageCars)
+
+# remove Id 
+test_set<- test_set %>% select(-Id)
+
+# match class of feature based on information on data
+num_to_factor<- c("MSSubClass","OverallQual","OverallCond")
+test_set[num_to_factor]<- lapply(test_set[num_to_factor], FUN = factor)
+
+# convert characters to factors
+char_to_factor<-lapply(test_set,class)
+char_to_factor_list<- names(char_to_factor[which(char_to_factor=="character")])
+
+test_set[char_to_factor_list]<- lapply(test_set[char_to_factor_list], FUN = factor)
+
+# convert dates to num
+date_to_num<- c("YearBuilt","GarageYrBlt","YearRemodAdd","MoSold","YrSold")
+test_set[date_to_num]<- apply(test_set[date_to_num],
+                              MARGIN = 2,
+                              FUN = as.numeric)
+
+# transform sale price to log10
+test_set<- test_set %>%
+  mutate(SalePrice = log10(SalePrice))
+
+```
+
+We'll only use the 15 most important features as we previously defined from the lm model.
+```{r, echo=FALSE, warning=FALSE,message=FALSE}
+# predict SalePrice with the test_set containing only the 15 most imporant features (based on lm model)
+test_set_lm<- test_set %>% select(imp_lm,SalePrice)
+levels(test_set_lm$OverallQual)<- levels(train_set_lm$OverallQual)
+levels(test_set_lm$MSSubClass)<- levels(train_set_lm$MSSubClass)
+
+SalePrice_predicted_lm<- predict(fit_lm,newdata = test_set_lm %>% select(-SalePrice))
+
+rmse_lm<- RMSE(10^SalePrice_predicted_lm,10^test_set_lm$SalePrice)
+```
+The resulting RMSE of our model is `r paste0("$",round(rmse_lm))`. 
+
+## Random Forest
+
+Now, we will be using `Rborist` to create our model. But first, we need to train our data and optimize the tuning parameters that will give us the best RMSE. For `Rborist` there are 2 tuning parameters, `predFixed` and `minNode`. We'll define the range of tuning parameters for training as show below:
+
+```{r, echo=FALSE}
+## train model - Random Forest
+train_set_rf<- train_set
+tune_grid<- expand.grid(predFixed= seq(round(final_dim[2]/3),42,3),
+                        minNode = seq(2,20,2))
+
+control<- trainControl(method="oob",
+                number=20,
+                p=0.9)
+
+tune_grid %>% kable()
+```
+
+We can now train our model and obtain the best tuning parameters. The resulting best tuning parameters are shown below:
+
+```{r, echo=FALSE, warning=FALSE}
+train_rf<- train(SalePrice~.,
+                 method="Rborist",
+                 data = train_set_rf,
+                 tuneGrid= tune_grid,
+                 trControl= control,
+                 nTree=500)
+
+# best tune
+train_rf$bestTune %>% kable()
+```
+
+Now, we can run `Rborist` based on the best tuning parameters. 
+```{r, echo=FALSE, warning=FALSE,message=FALSE}
+# create model using best tuning parameters
+fit_rf<- Rborist(x = train_set_rf %>% select(-SalePrice),
+                 y = train_set_rf$SalePrice,
+                 predFixed=train_rf$bestTune$predFixed,
+                 minNode=train_rf$bestTune$minNode)
+```
+
+```{r, echo=FALSE}
+# compute RMSE of the model based on the train data
+rmse_train_rf<- RMSE(10^fit_rf$validation$yPred,10^train_set_rf$SalePrice)
+```
+The resulting RMSE of the training set is `r paste0("$",round(rmse_train_rf))`.
+
+Now, we'll investigate the importance of each feature based on the result of the random forest model. We can see the importance of each feature below:
+
+```{r, echo=FALSE}
+varImp(train_rf)
+```
+
+From the results above, we'll take the 15 most important features and use this to retrain our data.
+```{r, echo=FALSE, warning=FALSE,message=FALSE}
+# Select 15 most important variables
+imp_rf<- c("GrLivArea","TotalBsmtSF","GarageArea","YearBuilt","Foundation","FireplaceQu","KitchenQual","GarageYrBlt","LotArea","Fireplaces","TotRmsAbvGrd","BsmtFinSF1","ExterQual","OverallQual","LotFrontage")
+
+# redefine train set based on the 15 most important features
+train_set<- train_set %>% select(imp_rf, SalePrice)
+
+# training set dimensions
+final_dim_imp<- dim(train_set)
+
+# train model
+tune_grid<- expand.grid(predFixed= seq(round(15/3),14,1),
+                        minNode = seq(2,20,2))
+
+control<- trainControl(method="oob",
+                       number=20,
+                       p=0.9)
+
+train_rf<- train(SalePrice~.,
+                 method="Rborist",
+                 data = train_set,
+                 tuneGrid= tune_grid,
+                 trControl= control,
+                 nTree=500)
+
+# create model using best tuning parameters
+fit_rf<- Rborist(x = train_set %>% select(-SalePrice),
+                 y = train_set$SalePrice,
+                 predFixed=train_rf$bestTune$predFixed,
+                 minNode=train_rf$bestTune$minNode)
+
+# compute RMSE of the model based on the train data
+rmse_train_imp_rf<- RMSE(10^fit_rf$validation$yPred,10^train_set$SalePrice)
+rmse_train_imp_rf
+```
+The resulting RMSE of the redefined training set is `r paste0("$",round(rmse_train_imp_rf))`.
+
+Now, we'll redefine our test set based on the 15 most important features from the random forest model. Then, we can proceed to predicting the sale prices.
+
+```{r, echo=FALSE, message=FALSE,warning=FALSE}
+# redefine test set with the 15 most important features (based on rf)
+test_set_rf<- test_set %>% select(imp_rf, SalePrice)
+
+# predict sale price of test set using train_rf with the optimized parameters
+SalePrice_predicted_rf<- predict(fit_rf, newdata = test_set_rf %>% select(-SalePrice))
+
+# compute RMSE of the antilogs of the predicted and true sale prices
+rmse_rf<- RMSE(10^SalePrice_predicted_rf$yPred, 10^test_set$SalePrice)
+rmse_rf
+```
+The resulting RMSE of the model is `r paste0("$",round(rmse_rf))`. 
+
+Below is the summary of the RMSEs for the two models.
+
+```{r, echo=FALSE}
+data.frame(model = c("linear regression","random forest"), training_RMSE = c(rmse_train_imp_lm, rmse_train_imp_rf), test_RMSE = c(rmse_lm,rmse_rf)) %>% kable()
+```
+
+\newpage
+
+# Conclusions
+
+There were two methods explored in this project for modeling the sale price of houses in Ames, Iowa given several house features. This project was able to reduce the number of features from `r init_dim[2]-2` to `r final_dim_imp[2]-1` through data cleaning, feature engineering, and selection of features based on importance. 
+The model which produced the better RMSE is the random forest model. It's resulting RMSE is `r paste0("$",round(rmse_rf))`. This resulting RMSE is close to our training RMSE of `r paste0("$",round(rmse_train_imp_rf))`, which is a good indication that we did not over train our model. 
+
+# Limitations
+
+The data available for training the model in this project only contains `r final_dim[1]` observations. The model would further be improved with more observations available for training.
+
+\newpage
+
+# Appendix
+## Code by user:
+```{r, eval=FALSE}
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(readr)) install.packages("readr", repos = "http://cran.us.r-project.org")
+if(!require(knitr)) install.packages("knitr", repos = "http://cran.us.r-project.org")
+if(!require(Rborist)) install.packages("knitr", repos = "http://cran.us.r-project.org")
+
+#load required libraries
+library(tidyverse)
+library(caret)
+library(readr)
+library(knitr)
+library(Rborist)
+
+# set options
+options(digits=5)
+
+url<- "https://raw.githubusercontent.com/renzasprec/House-Prices/main/train.csv"
+dat<- read_csv(url)
+
+# Exploratory Data Analysis -----
+str(dat, give.attr=FALSE)
+
+# split into a training and testing set
+set.seed(1, sample.kind = "Rounding")
+test_ind<- createDataPartition(dat$SalePrice, times=1, p=0.1, list=FALSE)
+test_set<- dat %>% slice(test_ind)
+train_set<- dat %>% slice(-test_ind)
+
+# match class of feature based on information on data
+num_to_factor<- c("MSSubClass","OverallQual","OverallCond")
+train_set[num_to_factor]<- lapply(train_set[num_to_factor], FUN = factor)
+
+# convert characters to factors
+char_to_factor<-lapply(train_set,class)
+char_to_factor_list<- names(char_to_factor[which(char_to_factor=="character")])
+
+train_set[char_to_factor_list]<- lapply(train_set[char_to_factor_list], FUN = factor)
+
+# convert dates to num
+date_to_num<- c("YearBuilt","GarageYrBlt","YearRemodAdd","MoSold","YrSold")
+train_set[date_to_num]<- apply(train_set[date_to_num],
+                               MARGIN = 2,
+                               FUN = as.numeric)
+
+# dimensions of train set
+init_dim<- dim(train_set)
+init_dim
+
+## check data for NAs -----
+nas<- apply(X = train_set, MARGIN = 2, FUN = function(x){sum(is.na(x))})
+n_rows<- nrow(train_set)
+nas<- rownames_to_column(data.frame(total_na = nas),var = "feature") %>% 
+  mutate(prop_na = total_na/n_rows) %>% 
+  arrange(desc(prop_na))
+
+# output table of NAs
+nas %>% filter(prop_na>0) %>% kable()
+
+# drop features with proportion of NAs greater than 0.80
+drop_cols_na<- with(nas, feature[prop_na>=0.80])
+train_set<- train_set %>% select(-drop_cols_na)
+drop_cols_na
+
+# drop related features
+train_set<- train_set %>% select(-c("PoolArea","MiscVal"))
+
+## check maximum weight of a single value ------
+single_val_wt_dat<- data.frame(single_val_wt= apply(train_set, MARGIN = 2, FUN = function(x){
+  tab<- table(x, useNA = "ifany")
+  sort(tab, decreasing = TRUE)[1]/n_rows
+})) %>%
+  arrange(desc(single_val_wt)) %>%
+  rownames_to_column(var = "feature")
+
+single_val_wt_dat %>% kable()
+
+# remove features with single value weight more than 0.8 as these features won't be helpful
+drop_cols_swt<- with(single_val_wt_dat, feature[single_val_wt>0.8])
+drop_cols_swt %>% kable()
+
+train_set<- train_set %>% select(-drop_cols_swt)
+
+## Filling NA values------
+
+# define indexes for NAs
+ind_na<- apply(X = train_set,MARGIN = 2,FUN = function(x){
+  any(is.na(x))
+})
+
+# features with NAs
+na_cols<- data.frame(feature= names(train_set[,ind_na]))
+na_cols %>% kable()
+
+# select features where NAs mean 0 (numerical)
+num_feat_0<- c("LotFrontage","MasVnrArea", "LotArea","BsmtFinSF1","BsmtUnfSF","TotalBsmtSF","1stFlrSF","2ndFlrSF","GrLivArea","BsmtFullBath","FullBath","HalfBath","BedroomAbvGr","TotRmsAbvGrd","Fireplaces","GarageCars","GarageArea","WoodDeckSF","OpenPorchSF")
+
+data.frame(feature = num_feat_0) %>% kable()
+
+# replace NAs which corresponds to 0
+train_set[,num_feat_0]<- apply(train_set[,num_feat_0], MARGIN = 2, FUN = function(x){
+  replace(x, is.na(x), 0)
+})
+
+# select features where NAs mean none (characters)
+char_feat_none<- c("MasVnrType","BsmtQual","BsmtExposure","BsmtFinType1","FireplaceQu","GarageType","GarageFinish")
+
+data.frame(feature = char_feat_none) %>% kable()
+
+# replace NAs which corresponds to none
+train_set[,char_feat_none]<- apply(train_set[,char_feat_none], MARGIN = 2,FUN = function(x){
+  replace(x, is.na(x),"none")
+})
+
+# select features where NAs mean that there are no inputted data
+char_feat_mode<- c("MSSubClass","MSZoning","LotShape","LotConfig","Neighborhood","HouseStyle","OverallQual","OverallCond","YearBuilt","YearRemodAdd","RoofStyle","Exterior1st","Exterior2nd","ExterQual","Foundation","HeatingQC","KitchenQual")
+
+data.frame(feature = char_feat_mode) %>% kable()
+
+# replace NAs for factor with the most common value
+train_set[,char_feat_mode]<- apply(train_set[,char_feat_mode], MARGIN = 2,FUN = function(x){
+  replace(x, is.na(x), names(which.max(table(x))))
+})
+
+# other NAs
+train_set<- train_set %>% mutate(GarageYrBlt = ifelse(is.na(GarageYrBlt),YearBuilt,GarageYrBlt))
+
+## Investigation of outcome ------
+
+# distribution of sale price
+train_set %>%
+  ggplot(aes(SalePrice)) +
+  geom_histogram(bins=30, color="black")
+
+# distribution of log of sale price
+train_set %>%
+  ggplot(aes(SalePrice)) +
+  geom_histogram(bins=30, color="black")+
+  scale_x_log10()
+
+# transform sale price to log10
+train_set<- train_set %>%
+  mutate(SalePrice = log10(SalePrice))
+
+# Feature Engineering------
+
+# investigate similar features
+
+# plot GrLivArea, 1stFlrSF, and 2ndFlrSF
+train_set %>% 
+  select(GrLivArea,`1stFlrSF`,`2ndFlrSF`) %>% 
+  apply(X = .,MARGIN = 2,FUN=sum) %>%
+  as.data.frame() %>% rownames_to_column(var="feature") %>%
+  rename(value=".") %>%
+  ggplot(aes(feature,value, fill=feature)) +
+  geom_col()
+
+# drop 1stFlrSF and 2ndFlrSF
+train_set<- train_set %>% select(-c(`1stFlrSF`,`2ndFlrSF`))
+
+# drop GarageCars since it is just similar to GarageArea
+train_set<- train_set %>% select(-GarageCars)
+
+# remove Id 
+train_set<- train_set %>% select(-Id)
+
+# match class of feature based on information on data
+num_to_factor<- c("MSSubClass","OverallQual","OverallCond")
+train_set[num_to_factor]<- lapply(train_set[num_to_factor], FUN = factor)
+
+# convert characters to factors
+char_to_factor<-lapply(train_set,class)
+char_to_factor_list<- names(char_to_factor[which(char_to_factor=="character")])
+
+train_set[char_to_factor_list]<- lapply(train_set[char_to_factor_list], FUN = factor)
+
+# convert dates to num
+date_to_num<- c("YearBuilt","GarageYrBlt","YearRemodAdd","MoSold","YrSold")
+train_set[date_to_num]<- apply(train_set[date_to_num],
+                               MARGIN = 2,
+                               FUN = as.numeric)
+
+# training set dimensions
+final_dim<- dim(train_set)
+
+# Model Evaluation and Metrics ------
+
+# RMSE function
+RMSE<- function(SalePrice_predicted, SalePrice_true){
+  sqrt(mean((SalePrice_predicted-SalePrice_true)^2))
+}
+
+# Model Training ------
+
+## train model - lm -----
+train_set_lm<- train_set
+
+fit_lm<- lm(SalePrice~., data = train_set_lm)
+
+rmse_train_lm<- RMSE(10^fit_lm$fitted.values, 10^train_set_lm$SalePrice)
+
+# obtain 15 most important features
+varImp(fit_lm) %>% arrange(desc(Overall)) %>% slice_head(n=35) %>% kable()
+
+imp_lm<- c("GrLivArea","MSZoning","OverallQual","GarageArea","FullBath","BsmtFinType1","HalfBath","BsmtExposure","MSSubClass","Neighborhood","BsmtFullBath","LotArea","KitchenQual","YearRemodAdd","GarageType")
+
+# redefine train_set with only the 15 most important features
+train_set_lm<- train_set %>% select(imp_lm,SalePrice)
+
+# new training set dimensions
+final_dim_lm<- dim(train_set_lm)
+
+# new model based on redefined data
+fit_lm<- lm(SalePrice~., data = train_set_lm)
+
+# rmse of the redefined training data
+rmse_train_imp_lm<- RMSE(10^fit_lm$fitted.values,10^train_set_lm$SalePrice)
+
+## TEST SET
+# perform data cleaning and feature engineering for the test set
+
+# drop features with proportion of NAs greater than 0.80 (based on train_set data)
+test_set<- test_set %>% select(-drop_cols_na)
+
+# drop related features
+test_set<- test_set %>% select(-c("PoolArea","MiscVal"))
+
+# remove features with single value weight more than 0.8 as removed from the train_set
+test_set<- test_set %>% select(-drop_cols_swt)
+
+# Filling NA values
+
+# define values for NAs
+ind_na<- apply(X = test_set,MARGIN = 2,FUN = function(x){
+  any(is.na(x))
+})
+
+# features with NAs
+na_cols<- names(test_set[,ind_na])
+
+# replace NAs which corresponds to 0
+test_set[,num_feat_0]<- apply(test_set[,num_feat_0], MARGIN = 2, FUN = function(x){
+  replace(x, is.na(x), 0)
+})
+
+# replace NAs which corresponds to none
+test_set[,char_feat_none]<- apply(test_set[,char_feat_none], MARGIN = 2,FUN = function(x){
+  replace(x, is.na(x),"none")
+})
+
+# replace NAs for factors with the most common value
+test_set[,char_feat_mode]<- apply(test_set[,char_feat_mode], MARGIN = 2,FUN = function(x){
+  replace(x, is.na(x), names(which.max(table(x))))
+})
+
+# other NAs
+test_set<- test_set %>% mutate(GarageYrBlt = ifelse(is.na(GarageYrBlt),YearBuilt,GarageYrBlt))
+
+# drop 1stFlrSF and 2ndFlrSF
+test_set<- test_set %>% select(-c(`1stFlrSF`,`2ndFlrSF`))
+
+# drop GarageCars since it is just similar to GarageArea
+test_set<- test_set %>% select(-GarageCars)
+
+# remove Id 
+test_set<- test_set %>% select(-Id)
+
+# match class of feature based on information on data
+num_to_factor<- c("MSSubClass","OverallQual","OverallCond")
+test_set[num_to_factor]<- lapply(test_set[num_to_factor], FUN = factor)
+
+# convert characters to factors
+char_to_factor<-lapply(test_set,class)
+char_to_factor_list<- names(char_to_factor[which(char_to_factor=="character")])
+
+test_set[char_to_factor_list]<- lapply(test_set[char_to_factor_list], FUN = factor)
+
+# convert dates to num
+date_to_num<- c("YearBuilt","GarageYrBlt","YearRemodAdd","MoSold","YrSold")
+test_set[date_to_num]<- apply(test_set[date_to_num],
+                              MARGIN = 2,
+                              FUN = as.numeric)
+
+# transform sale price to log10
+test_set<- test_set %>%
+  mutate(SalePrice = log10(SalePrice))
+
+# predict SalePrice with the test_set containing only the 15 most imporant features (based on lm model)
+test_set_lm<- test_set %>% select(imp_lm,SalePrice)
+levels(test_set_lm$OverallQual)<- levels(train_set_lm$OverallQual)
+levels(test_set_lm$MSSubClass)<- levels(train_set_lm$MSSubClass)
+
+SalePrice_predicted_lm<- predict(fit_lm,newdata = test_set_lm %>% select(-SalePrice))
+
+rmse_lm<- RMSE(10^SalePrice_predicted_lm,10^test_set_lm$SalePrice)
+
+## train model - Random Forest ----
+train_set_rf<- train_set
+tune_grid<- expand.grid(predFixed= seq(round(final_dim[2]/3),42,3),
+                        minNode = seq(2,20,2))
+
+control<- trainControl(method="oob",
+                number=20,
+                p=0.9)
+
+train_rf<- train(SalePrice~.,
+                 method="Rborist",
+                 data = train_set_rf,
+                 tuneGrid= tune_grid,
+                 trControl= control,
+                 nTree=500)
+
+# best tune
+train_rf$bestTunetTune
+
+# create model using best tuning parameters
+fit_rf<- Rborist(x = train_set_rf %>% select(-SalePrice),
+                 y = train_set_rf$SalePrice,
+                 predFixed=train_rf$bestTune$predFixed,
+                 minNode=train_rf$bestTune$minNode)
+
+# compute RMSE of the model based on the train data
+rmse_train_rf<- RMSE(10^fit_rf$validation$yPred,10^train_set_rf$SalePrice)
+rmse_train_rf
+
+# Obtain importance of each feature
+varImp(train_rf)
+
+# Select 15 most important variables
+imp_rf<- c("GrLivArea","TotalBsmtSF","GarageArea","YearBuilt","Foundation","FireplaceQu","KitchenQual","GarageYrBlt","LotArea","Fireplaces","TotRmsAbvGrd","BsmtFinSF1","ExterQual","OverallQual","LotFrontage")
+
+# redefine train set based on the 15 most important features
+train_set<- train_set %>% select(imp_rf, SalePrice)
+
+# training set dimensions
+final_dim_imp<- dim(train_set)
+
+# train model
+tune_grid<- expand.grid(predFixed= seq(round(15/3),14,1),
+                        minNode = seq(2,20,2))
+
+control<- trainControl(method="oob",
+                       number=20,
+                       p=0.9)
+
+train_rf<- train(SalePrice~.,
+                 method="Rborist",
+                 data = train_set,
+                 tuneGrid= tune_grid,
+                 trControl= control,
+                 nTree=500)
+
+# create model using best tuning parameters
+fit_rf<- Rborist(x = train_set %>% select(-SalePrice),
+                 y = train_set$SalePrice,
+                 predFixed=train_rf$bestTune$predFixed,
+                 minNode=train_rf$bestTune$minNode)
+
+# compute RMSE of the model based on the train data
+rmse_train_imp_rf<- RMSE(10^fit_rf$validation$yPred,10^train_set$SalePrice)
+rmse_train_imp_rf
+
+# redefine test set with the 15 most important features (based on rf)
+test_set_rf<- test_set %>% select(imp_rf, SalePrice)
+
+# predict sale price of test set using train_rf with the optimized parameters
+SalePrice_predicted_rf<- predict(fit_rf, newdata = test_set_rf %>% select(-SalePrice))
+
+# compute RMSE of the antilogs of the predicted and true sale prices
+rmse_rf<- RMSE(10^SalePrice_predicted_rf$yPred, 10^test_set$SalePrice)
+rmse_rf
+
+# summary of RMSEs for the two models -----
+data.frame(model = c("linear regression","random forest"), training_RMSE = c(rmse_train_imp_lm, rmse_train_imp_rf), test_RMSE = c(rmse_lm,rmse_rf)) %>% kable()
+```
+
+
